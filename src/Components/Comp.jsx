@@ -1,151 +1,71 @@
+import { useEffect, useRef } from "react";
 import {
   Engine,
-  Events,
   Render,
-  Runner,
-  Body,
-  Composite,
-  Composites,
-  Constraint,
-  MouseConstraint,
-  Mouse,
-  World,
   Bodies,
-  Matter,
+  World,
+  MatterMouse,
+  MatterMouseConstraint,
 } from "matter-js";
 
-import React from "react";
+function Comp(props) {
+  const scene = useRef();
+  const engine = useRef(Engine.create());
 
-const mountDemo = (element: HTMLElement) => {
-  const engine = Engine.create();
-  const world = engine.world;
+  //test
+  let a = Bodies.rectangle(500, 100, 150, 50, { isStatic: false });
+  let b = Bodies.rectangle(600, 80, 150, 50, { isStatic: false });
 
-  const render = Render.create({
-    element: element,
-    engine: engine,
-    options: {
-      width: 800,
-      height: 600,
-      showAngleIndicator: true,
-      showCollisions: true,
-      showVelocity: true,
-    },
-  });
+  useEffect(() => {
+    const cw = document.body.clientWidth;
+    const ch = document.body.clientHeight;
 
-  Render.run(render);
-
-  const runner = Runner.create();
-  Runner.run(runner, engine);
-
-  let group = Body.nextGroup(true);
-
-  let ropeA = Composites.stack(100, 500, 8, 1, 10, 10, function (x, y) {
-    return Bodies.rectangle(x, y, 50, 20, {
-      collisionFilter: { group: group },
-    });
-  });
-
-  Composites.chain(ropeA, 0.5, 0, -0.5, 0, {
-    stiffness: 0.8,
-    length: 2,
-    render: { type: "line" },
-  });
-  Composite.add(
-    ropeA,
-    Constraint.create({
-      bodyB: ropeA.bodies[0],
-      pointB: { x: -10, y: 0 },
-      pointA: { x: ropeA.bodies[0].position.x, y: ropeA.bodies[0].position.y },
-      stiffness: 0.5,
-    })
-  );
-
-  Composite.rotate(ropeA, -Math.PI / 2, ropeA.bodies[0].position);
-
-  group = Body.nextGroup(true);
-
-  var ropeC = Composites.stack(600, 500, 13, 1, 10, 10, function (x, y) {
-    return Bodies.rectangle(x - 20, y, 50, 20, {
-      collisionFilter: { group: group },
-      chamfer: 5,
-    });
-  });
-
-  Composites.chain(ropeC, 0.3, 0, -0.3, 0, { stiffness: 1, length: 0 });
-  Composite.add(
-    ropeC,
-    Constraint.create({
-      bodyB: ropeC.bodies[0],
-      pointB: { x: -20, y: 0 },
-      pointA: { x: ropeC.bodies[0].position.x, y: ropeC.bodies[0].position.y },
-      stiffness: 0.5,
-    })
-  );
-
-  Composite.rotate(ropeC, -Math.PI / 2, ropeC.bodies[0].position);
-
-  World.add(world, [
-    ropeA,
-    ropeC,
-    Bodies.rectangle(400, 600, 1200, 50.5, { isStatic: true }),
-  ]);
-
-  // add mouse control
-  var mouse = Mouse.create(render.canvas),
-    mouseConstraint = MouseConstraint.create(engine, {
-      mouse: mouse,
-      constraint: {
-        stiffness: 0.2,
-        render: {
-          visible: false,
-        },
+    const render = Render.create({
+      element: scene.current,
+      engine: engine.current,
+      options: {
+        width: cw,
+        height: ch,
+        wireframes: false,
+        background: "transparent",
       },
     });
 
-  World.add(world, mouseConstraint);
+    //borders
+    World.add(engine.current.world, [
+      Bodies.rectangle(cw / 2, -10, cw, 20, { isStatic: true }),
+      Bodies.rectangle(-10, ch / 2, 20, ch, { isStatic: true }),
+      Bodies.rectangle(cw / 2, ch + 10, cw, 20, { isStatic: true }),
+      Bodies.rectangle(cw + 10, ch / 2, 20, ch, { isStatic: true }),
+      a,
+      b,
+    ]);
 
-  // keep the mouse in sync with rendering
-  render.mouse = mouse;
+    Engine.run(engine.current);
+    Render.run(render);
 
-  // fit the render viewport to the scene
-  Render.lookAt(render, {
-    min: { x: 0, y: 0 },
-    max: { x: 700, y: 600 },
-  });
+    return () => {
+      Render.stop(render);
+      World.clear(engine.current.world);
+      Engine.clear(engine.current);
+      render.canvas = null;
+      render.context = null;
+      render.textures = {};
+    };
+  }, []);
 
-  // context for MatterTools.Demo
-  return {
-    engine: engine,
-    runner: runner,
-    render: render,
-    canvas: render.canvas,
-    stop: function () {
-      Matter.Render.stop(render);
-      Matter.Runner.stop(runner);
-    },
-  };
-};
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log(b.position.x, b.position.y, b.angle);
+    }, 10);
+    return () => clearInterval(interval);
+  }, []);
 
-class Demo extends React.PureComponent {
-  componentDidMount() {
-    if (this.container) {
-      const demo = mountDemo(this.container);
-      window.requestAnimationFrame(() => {
-        console.log(demo.engine.world.composites);
-      });
-    }
-    // Todo: [] Perlin noise gravityX for wind
-  }
-
-  render() {
-    return (
-      <article
-        ref={(element) => {
-          this.container = element;
-        }}
-      />
-    );
-  }
+  return (
+    <div>
+      <div ref={scene} style={{ width: "100%", height: "100%" }} />
+    </div>
+  );
 }
 
-export default Demo;
+export default Comp;
