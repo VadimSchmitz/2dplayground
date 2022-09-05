@@ -11,7 +11,8 @@ export default function App() {
       Constraint = Matter.Constraint,
       MouseConstraint = Matter.MouseConstraint,
       Mouse = Matter.Mouse,
-      Bodies = Matter.Bodies;
+      Bodies = Matter.Bodies,
+      Body = Matter.Body;
 
     var engine = Engine.create(),
       world = engine.world;
@@ -50,31 +51,49 @@ export default function App() {
       isStatic: true,
     });
 
-    let length = 200;
-    let width = 25;
-    let x = 350;
-    let y = 360;
+    // add bodies
+    var group = Body.nextGroup(true),
+      length = 200,
+      width = 25;
 
-    var pendulum = Composites.stack(350, 160, 1, 1, 0, 0, function () {
+    var pendulum = Composites.stack(400, 150, 1, 1, -20, 0, function (x, y) {
       return Bodies.rectangle(x, y, length, width, {
+        collisionFilter: { group: group },
         frictionAir: 0,
+        chamfer: 5,
         render: {
-          lineWidth: 3,
+          fillStyle: "transparent",
+          lineWidth: 1,
         },
       });
     });
 
-    //create constraint
+    var square = Bodies.rectangle(600, 150, 50, 50, {
+      frictionAir: 0,
+      render: {
+        fillStyle: "transparent",
+        lineWidth: 1,
+      },
+    });
+
+    let squareComp;
+    squareComp = Composite.create();
+    Composite.add(squareComp, square);
+    console.log(squareComp);
+
+    engine.gravity.scale = 0.002;
+
     Composite.add(
       pendulum,
       Constraint.create({
         bodyB: pendulum.bodies[0],
-        pointB: { x: -length * 0.42, y: 0 },
+        pointB: { x: 20, y: 0 },
         pointA: {
-          x: pendulum.bodies[0].position.x - length * 0.42,
-          y: pendulum.bodies[0].position.y,
+          x: 200,
+          y: 200,
         },
         stiffness: 0.9,
+        length: 0,
         render: {
           strokeStyle: "#4a485b",
         },
@@ -82,6 +101,7 @@ export default function App() {
     );
 
     Composite.add(world, pendulum);
+    Composite.add(world, squareComp);
 
     // add mouse control
     var mouse = Mouse.create(render.canvas),
@@ -103,64 +123,39 @@ export default function App() {
     Composite.add(world, leftWall);
     Composite.add(world, rightWall);
 
-    // add revolute constraint
-    var body = Bodies.rectangle(600, 200, 200, 20);
-
-    var constraint = Constraint.create({
-      pointA: { x: 600, y: 200 },
-      bodyB: body,
-      length: 0,
-    });
-
-    Composite.add(world, [body, constraint]);
-
     // keep the mouse in sync with rendering
     render.mouse = mouse;
 
-    let square = Bodies.rectangle(359, 160, 60, 60, {
-      frictionAir: 0,
-      isStatic: false,
-      render: {
-        lineWidth: 3,
-      },
-    });
-
-    let square2 = Bodies.rectangle(359, 160, 60, 60, {
-      frictionAir: 0,
-      isStatic: false,
-      render: {
-        lineWidth: 3,
-      },
-    });
-
-    Composite.add(world, square);
-
     //set pivot if clicked at position
     Matter.Events.on(runner, "tick", (event) => {
+      let allConstraints = Composite.allConstraints(world);
+
       if (mouseConstraint.body) {
-        let allConstraints = Composite.allConstraints(world);
-        // Composite.remove(world, allConstraints);
-
-        let test = {};
-        // test = Constraint.create({
-        //   pointA: {
-        //     x: mouseConstraint.mouse.absolute.x - length,
-        //     y: mouseConstraint.mouse.absolute.y,
-        //   },
-        //   bodyB: mouseConstraint.body,
-        //   pointB: {
-        //     x: 0,
-        //     y: 0,
-        //   },
-        //   stiffness: 0.9,
-        //   render: {
-        //     strokeStyle: "#4a485b",
-        //   },
-        // });
-
-        console.log(test);
-        Composite.add(world, test);
+        console.log(mouseConstraint.body, mouseConstraint.mouse.absolute);
+        Composite.add(
+          squareComp,
+          Constraint.create({
+            bodyB: squareComp.bodies[0],
+            pointB: {
+              x:
+                mouseConstraint.body.axes[0].x + mouseConstraint.body.axes[1].x,
+              y:
+                mouseConstraint.body.axes[0].y + mouseConstraint.body.axes[1].y,
+            },
+            pointA: {
+              x: mouseConstraint.mouse.absolute.x,
+              y: mouseConstraint.mouse.absolute.y,
+            },
+            stiffness: 0.9,
+            length: 0,
+            render: {
+              strokeStyle: "#4a485b",
+            },
+          })
+        );
+        Composite.remove(squareComp, allConstraints);
       }
+      Composite.remove(squareComp, allConstraints);
     });
 
     // context for MatterTools.Demo
