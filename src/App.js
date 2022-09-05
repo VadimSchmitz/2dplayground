@@ -1,12 +1,14 @@
+import { useRef } from "react";
 import "./App.css";
-import Comp from "./Components/Comp";
 
-function App() {
+import PlanckWorld from "./Components/PlanckWorld";
+
+export default function App() {
+  let circleAngle = useRef(10);
+
   return (
-    <div className="full-size">
-      <Comp />
+    <div>
+      <PlanckWorld circleAngle={circleAngle} />
     </div>
   );
 }
-
-export default App;
