@@ -2,110 +2,181 @@ import { useEffect } from "react";
 import Matter from "matter-js";
 
 export default function App() {
-  let barA;
-  let barB;
-
   useEffect(() => {
-    var Engine = Matter.Engine,
+    let Engine = Matter.Engine,
       Render = Matter.Render,
-      Events = Matter.Events,
+      Runner = Matter.Runner,
+      Composite = Matter.Composite,
+      Composites = Matter.Composites,
+      Constraint = Matter.Constraint,
       MouseConstraint = Matter.MouseConstraint,
       Mouse = Matter.Mouse,
-      World = Matter.World,
       Bodies = Matter.Bodies;
 
-    // create an engine
     var engine = Engine.create(),
       world = engine.world;
 
-    // create a renderer
+    // create renderer
     var render = Render.create({
       element: document.body,
       engine: engine,
       options: {
         width: window.innerWidth,
         height: window.innerHeight,
-        pixelRatio: 2,
         wireframes: false,
       },
     });
 
+    Render.run(render);
+
+    // create runner
+    var runner = Runner.create();
+    Runner.run(runner, engine);
+
+    //gravity
+    engine.gravity.scale = 0.001;
+
+    // add bodies
     const cw = document.body.clientWidth;
     const ch = document.body.clientHeight;
 
-    let ground = Bodies.rectangle(cw / 2, -10, cw, 20, { isStatic: true });
-    let leftWall = Bodies.rectangle(-10, ch / 2, 20, ch, { isStatic: true });
-    let rightWall = Bodies.rectangle(cw / 2, ch + 10, cw, 20, {
+    let celing = Bodies.rectangle(cw / 2, -10, cw, 25, { isStatic: true });
+    let ground = Bodies.rectangle(cw / 2, ch, cw, 25, {
       isStatic: true,
     });
-    let ceiling = Bodies.rectangle(cw + 10, ch / 2, 20, ch, { isStatic: true });
 
-    // object colors & variables
-
-    // create objects
-    let a = Bodies.rectangle(500, 100, 150, 50, {
-      isStatic: false,
-      inertia: Infinity,
+    let leftWall = Bodies.rectangle(-10, ch / 2, 25, ch, { isStatic: true });
+    let rightWall = Bodies.rectangle(cw, ch / 2, 20, ch, {
+      isStatic: true,
     });
-    let b = Bodies.rectangle(600, 80, 150, 50, { isStatic: false });
 
-    barA = a;
-    barB = b;
+    let length = 200;
+    let width = 25;
+    let x = 350;
+    let y = 360;
 
-    // add all of the bodies to the world
-    World.add(engine.world, [ground, leftWall, rightWall, ceiling, a, b]);
+    var pendulum = Composites.stack(350, 160, 1, 1, 0, 0, function () {
+      return Bodies.rectangle(x, y, length, width, {
+        frictionAir: 0,
+        render: {
+          lineWidth: 3,
+        },
+      });
+    });
+
+    //create constraint
+    Composite.add(
+      pendulum,
+      Constraint.create({
+        bodyB: pendulum.bodies[0],
+        pointB: { x: -length * 0.42, y: 0 },
+        pointA: {
+          x: pendulum.bodies[0].position.x - length * 0.42,
+          y: pendulum.bodies[0].position.y,
+        },
+        stiffness: 0.9,
+        render: {
+          strokeStyle: "#4a485b",
+        },
+      })
+    );
+
+    Composite.add(world, pendulum);
 
     // add mouse control
     var mouse = Mouse.create(render.canvas),
       mouseConstraint = MouseConstraint.create(engine, {
         mouse: mouse,
         constraint: {
-          stiffness: 0.1,
+          stiffness: 0.2,
           render: {
-            visible: false,
+            visible: true,
           },
         },
       });
 
-    const runner = Matter.Runner.create();
-    Matter.Events.on(runner, "tick", (event) => {
-      if (mouseConstraint.body) {
-        console.log(
-          mouseConstraint.body.vertices[0],
-          mouseConstraint.body.vertices[1],
-          mouseConstraint.body.vertices[2],
-          mouseConstraint.body.vertices[3]
-        );
-        console.log(
-          mouseConstraint.mouse.absolute.x,
-          mouseConstraint.mouse.absolute.y
-        );
-      }
+    Composite.add(world, mouseConstraint);
+    // Composite.add(ground, ceiling, leftWall, rightWall, ball);
+    Composite.add(world, celing);
+    Composite.add(world, ground);
+
+    Composite.add(world, leftWall);
+    Composite.add(world, rightWall);
+
+    // add revolute constraint
+    var body = Bodies.rectangle(600, 200, 200, 20);
+
+    var constraint = Constraint.create({
+      pointA: { x: 600, y: 200 },
+      bodyB: body,
+      length: 0,
     });
 
-    World.add(world, mouseConstraint);
+    Composite.add(world, [body, constraint]);
 
     // keep the mouse in sync with rendering
     render.mouse = mouse;
-    // run the engine
-    Matter.Runner.start(runner, engine);
-    // run the renderer
-    Render.run(render);
+
+    let square = Bodies.rectangle(359, 160, 60, 60, {
+      frictionAir: 0,
+      isStatic: false,
+      render: {
+        lineWidth: 3,
+      },
+    });
+
+    let square2 = Bodies.rectangle(359, 160, 60, 60, {
+      frictionAir: 0,
+      isStatic: false,
+      render: {
+        lineWidth: 3,
+      },
+    });
+
+    Composite.add(world, square);
+
+    //set pivot if clicked at position
+    Matter.Events.on(runner, "tick", (event) => {
+      if (mouseConstraint.body) {
+        let allConstraints = Composite.allConstraints(world);
+        // Composite.remove(world, allConstraints);
+
+        let test = {};
+        // test = Constraint.create({
+        //   pointA: {
+        //     x: mouseConstraint.mouse.absolute.x - length,
+        //     y: mouseConstraint.mouse.absolute.y,
+        //   },
+        //   bodyB: mouseConstraint.body,
+        //   pointB: {
+        //     x: 0,
+        //     y: 0,
+        //   },
+        //   stiffness: 0.9,
+        //   render: {
+        //     strokeStyle: "#4a485b",
+        //   },
+        // });
+
+        console.log(test);
+        Composite.add(world, test);
+      }
+    });
+
+    // context for MatterTools.Demo
+    return {
+      engine: engine,
+      runner: runner,
+      render: render,
+      canvas: render.canvas,
+      stop: function () {
+        Matter.Render.stop(render);
+        Matter.Runner.stop(runner);
+      },
+    };
   });
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // console.log(barB.position.x, barB.position.y, barB.angle);
-      // console.log(
-      //   barB.vertices[0],
-      //   barB.vertices[1],
-      //   barB.vertices[2],
-      //   barB.vertices[3]
-      // );
-      // barB.torque += 10;
-    }, 10);
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(() => {}, []);
 
   return <div></div>;
 }
