@@ -75,6 +75,7 @@ export default function App() {
         lineWidth: 1,
       },
     });
+    
 
     let squareComp;
     squareComp = Composite.create();
@@ -126,6 +127,8 @@ export default function App() {
     // keep the mouse in sync with rendering
     render.mouse = mouse;
 
+    engine.timing.timeScale = 0.5;
+
     //set pivot if clicked at position
     Matter.Events.on(runner, "tick", (event) => {
       let allConstraints = Composite.allConstraints(world);
@@ -138,15 +141,17 @@ export default function App() {
             bodyB: squareComp.bodies[0],
             pointB: {
               x:
-                mouseConstraint.body.axes[0].x + mouseConstraint.body.axes[1].x,
+                mouseConstraint.mouse.absolute.x -
+                mouseConstraint.body.position.x,
               y:
-                mouseConstraint.body.axes[0].y + mouseConstraint.body.axes[1].y,
+                mouseConstraint.mouse.absolute.y -
+                mouseConstraint.body.position.y,
             },
             pointA: {
               x: mouseConstraint.mouse.absolute.x,
               y: mouseConstraint.mouse.absolute.y,
             },
-            stiffness: 0.9,
+            stiffness: 0.01,
             length: 0,
             render: {
               strokeStyle: "#4a485b",
